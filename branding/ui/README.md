@@ -1,1 +1,0 @@
-# trustify-ui-redhat
