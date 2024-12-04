@@ -1,0 +1,21 @@
+{
+  "application": {
+    "title": "RHTPA",
+    "name": "RHTPA UI",
+    "description": "RHTPA UI"
+  },
+  "about": {
+    "displayName": "RHTPA",
+    "imageSrc": "<%= brandingRoot %>/images/redhat-logo.svg",
+    "documentationUrl": "https://trustification.io/"
+  },
+  "masthead": {
+    "leftBrand": {
+      "src": "<%= brandingRoot %>/images/masthead-logo.svg",
+      "alt": "brand",
+      "height": "40px"
+    },
+    "leftTitle": null,
+    "rightBrand": null
+  }
+}
