@@ -1,31 +1,22 @@
-FROM registry.access.redhat.com/ubi9/ubi:latest as builder
+FROM registry.access.redhat.com/ubi9/ubi:latest
 
-ARG tag
+ARG RUST_VERSION="1.83.0"
 
-RUN uname -m
-# set up staging directory
+RUN dnf install -y gcc openssl openssl-devel cmake gcc-c++ git curl-minimal
 
-RUN mkdir /stage
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain ${RUST_VERSION}
 
-# install zlib and cleanup
-RUN dnf install --installroot /stage --setop install_weak_deps=false --nodocs -y zlib openssl krb5-libs libzstd lz4-libs libxml2
-RUN dnf clean all --installroot /stage
+ENV PATH "$PATH:/root/.cargo/bin"
 
-# prepare our binary
-RUN mkdir /unpack/
-COPY download/ /unpack/
-RUN cd unpack && \
-    tar --strip-components 2 -xavf trustd-$(uname -m)-unknown-linux-gnu/trustd-${tag}-$(uname -m)-unknown-linux-gnu.tar.gz && \
-    find
+RUN mkdir /usr/src/project
 
-# copy binary to staging
-RUN cp -av /unpack/trustd /stage/usr/local/bin
+COPY . /usr/src/project
 
-# dump staging
-RUN find /stage
-RUN du -h /stage
+WORKDIR /usr/src/project
 
-FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+RUN cargo build --release
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 LABEL com.redhat.component ="RHTPA"
 LABEL description ="RHTPA"
@@ -36,8 +27,21 @@ LABEL name ="RHTPA"
 LABEL org.opencontainers.image.source="https://github.com/trustification/rhtpa"
 LABEL summary ="RHTPA"
 
-# copy staging over to actual image
+RUN microdnf reinstall tzdata -y
+ENV TZ=UTC
+RUN mkdir trustify
 
-COPY --from=builder /stage/ .
+COPY --from=0 /usr/src/project/target/release/trustd trustify
+COPY --from=0 /usr/src/project/test.sh trustify
 
-ENTRYPOINT ["/usr/local/bin/trustd"]
+RUN useradd -ms /bin/bash trustify
+
+RUN chown trustify -R trustify
+
+RUN mkdir /licenses
+
+COPY ./LICENSE /licenses/AL
+
+USER trustify
+
+WORKDIR trustify
